@@ -9,14 +9,18 @@ const port = process.env.PORT || 3000
 
 //middleware
 
-// const corOptions = {
-//     origin: ['http://localhost:3000'],
-//     credentials: true,
-//     optionSuccessStatus: 200,
-// }
-// app.use(cors(corOptions))
+const corOptions = {
+    origin: [
+        'http://localhost:5173',
+        'http://localhost:5174',
+        'https://solosphere.web.app',
+    ],
+    credentials: true,
+    optionSuccessStatus: 200,
+}
+app.use(cors(corOptions))
 
-app.use(cors())
+// app.use(cors())
 app.use(express.json())
 
 
@@ -112,8 +116,8 @@ async function run() {
         })
 
 
-           //gets all bids for a user by email from db
-           app.get('/my-bids/:email', async (req, res) => {
+        //gets all bids for a user by email from db
+        app.get('/my-bids/:email', async (req, res) => {
             const email = req.params.email
             // const query = { email: email }
             const query = { email }
@@ -122,13 +126,27 @@ async function run() {
         })
 
 
-         //gets all bid requests from db for job owner
-         app.get('/bie-request/:email', async (req, res) => {
+        //gets all bid requests from db for job owner
+        app.get('/bid-requests/:email', async (req, res) => {
             const email = req.params.email
             // in db buyer is a object so objects value need to access with quotation 
             const query = { 'buyer.email': email }
             const result = await bidsCollection.find(query).toArray()
             res.send(result)
+        })
+
+        // update bid status
+
+        app.patch('/bid/:id', async (req, res) => {
+            const id = req.params.id
+            const status = req.body
+            const query = { _id: new ObjectId(id) }
+            const updateDoc = {
+                $set: status,
+            }
+            const result = await bidsCollection.updateOne(query, updateDoc)
+            res.send(result)
+
         })
 
         // Send a ping to confirm a successful connection
