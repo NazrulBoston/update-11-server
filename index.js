@@ -109,7 +109,7 @@ async function run() {
         })
 
 
-        //save a bid data in DB or post a bid data in DB
+        //save a bid data in DB or post a bid data in DB (database)
         app.post("/bid", async (req, res) => {
             const bidData = req.body;
             // check if it is a duplicate request
