@@ -5,7 +5,6 @@ const app = express()
 const jwt = require('jsonwebtoken')
 const cookieParser = require('cookie-parser')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-const email = require('surge/lib/middleware/email');
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET;
 
 const port = process.env.PORT || 3000
@@ -24,24 +23,24 @@ app.use(cors(corOptions))
 // app.use(cors())
 app.use(express.json())
 app.use(cookieParser())
- 
+
 
 // verify jwt middleware
-const verifyToken = (req, res, next ) => {
+const verifyToken = (req, res, next) => {
     const token = req.cookies?.token
-    if(!token) return res.status(401).send({message:'unauthorized access'})
-        if(token){
-            jwt.verify(token, ACCESS_TOKEN_SECRET, (err, decoded)=> {
-                if(err){
-                    console.log(err)
-                    return res.status(401).send({message:'unauthorized access'})
-                }
-                console.log(decoded)
-                // akhnane req.user ar moddhe decoded token dile onno api ar moddhe theke user ar token aceess kara jabe
-                req.user = decoded
-                next();
-            })
-        }
+    if (!token) return res.status(401).send({ message: 'unauthorized access' })
+    if (token) {
+        jwt.verify(token, ACCESS_TOKEN_SECRET, (err, decoded) => {
+            if (err) {
+                console.log(err)
+                return res.status(401).send({ message: 'unauthorized access' })
+            }
+            console.log(decoded)
+            // akhnane req.user ar moddhe decoded token dile onno api ar moddhe theke user ar token aceess kara jabe
+            req.user = decoded
+            next();
+        })
+    }
 }
 
 
@@ -77,7 +76,7 @@ async function run() {
                 .send({ success: true })
 
         })
- 
+
 
         // clear token on logout
         app.get('/logout', (req, res) => {
@@ -115,12 +114,12 @@ async function run() {
             // check if it is a duplicate request
             const query = {
                 email: bidData.email,
-                jobId : bidData.jobId
+                jobId: bidData.jobId
             }
             const alreadyApplied = await bidsCollection.findOne(query)
             console.log(alreadyApplied)
 
-            if(alreadyApplied){
+            if (alreadyApplied) {
                 return res.status(400).send('You already applied!')
             }
             const result = await bidsCollection.insertOne(bidData)
@@ -143,8 +142,8 @@ async function run() {
             const tokenEmail = req.user?.email
             console.log(tokenEmail)
             const email = req.params.email
-            if(tokenEmail !== email ){
-                return res.status(403).send({message:'forbidden access'})
+            if (tokenEmail !== email) {
+                return res.status(403).send({ message: 'forbidden access' })
             }
             const query = { 'buyer.email': email }
             const result = await jobsCollection.find(query).toArray()
@@ -189,7 +188,7 @@ async function run() {
 
 
         //gets all bid requests from db for job owner
-        app.get('/bid-requests/:email',verifyToken, async (req, res) => {
+        app.get('/bid-requests/:email', verifyToken, async (req, res) => {
             const email = req.params.email
             // in db buyer is a object so objects value need to access with quotation 
             const query = { 'buyer.email': email }
@@ -210,6 +209,49 @@ async function run() {
             res.send(result)
 
         })
+
+        //get all the jobs data from db for pagination
+        app.get("/all-jobs", async (req, res) => {
+            const size = parseInt(req.query.size)
+            const page = parseInt(req.query.page) - 1
+            const filter = req.query.filter
+            const sort = req.query.sort
+            const search = req.query.search
+            console.log(page, size)
+
+
+            let query = {
+                job_title: { $regex: search, $options: 'i' }
+            }
+            if (filter) query.category = filter;
+
+            let options = {}
+            if (sort) options = {
+                sort: { deadline: sort === 'asc' ? 1 : -1 }
+            }
+
+
+            const result = await jobsCollection.find(query, options).skip(page * size).limit(size).toArray();
+            res.send(result)
+        })
+
+
+
+        //get all the jobs data count from db
+        app.get("/jobs-count", async (req, res) => {
+            const filter = req.query.filter
+            const search = req.query.search
+            let query = {
+                job_title: { $regex: search, $options: 'i' }
+            }
+            if (filter) query.category = filter;
+            const count = await jobsCollection.countDocuments(query)
+            res.send({ count })
+        })
+
+
+
+
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
